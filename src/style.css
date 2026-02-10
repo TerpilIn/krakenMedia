@@ -1,4 +1,4 @@
-/* Базовые переменные остаются прежними */
+/* Базовые переменные для динамической настройки */
 :root {
     --cpu-color: #50b4ff;
     --gpu-color: #9b59ff;
@@ -10,8 +10,8 @@ body, html {
     margin: 0; 
     padding: 0;
     overflow: hidden;
-    width: 320px; 
-    height: 320px;
+    width: 480px; 
+    height: 480px;
     display: flex; 
     align-items: center; 
     justify-content: center;
@@ -20,52 +20,109 @@ body, html {
 
 .screen { 
     position: relative; 
-    width: 320px; 
-    height: 320px; 
+    width: 480px; 
+    height: 480px; 
     background-color: #ffffff; 
     overflow: hidden;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Принудительно делаем экран круглым визуально */
     border-radius: 50%;
 }
 
 /* --- ТЕМЫ --- */
-.screen.theme-cyberpunk { background-color: #fcee0a; }
-.screen.theme-cyberpunk .brand { color: #000; text-shadow: 1px 1px #00ff41; }
+
+/* Тема: Cyberpunk */
+.screen.theme-cyberpunk {
+    background-color: #fcee0a;
+}
+.screen.theme-cyberpunk .brand { color: #000; font-family: 'Courier New', monospace; text-shadow: 2px 2px #00ff41; }
 .screen.theme-cyberpunk .temp-block { color: #000; }
 
-.screen.theme-minimal { background-color: #111; }
-.screen.theme-minimal .brand { color: #fff; letter-spacing: 5px; }
+/* Тема: Minimal */
+.screen.theme-minimal {
+    background-color: #111;
+}
+.screen.theme-minimal .overlay { display: none; }
+.screen.theme-minimal .brand { letter-spacing: 10px; font-weight: 200; color: #fff; }
 .screen.theme-minimal .temp-block { color: #fff; }
 
-/* --- РЕЖИМЫ --- */
-.screen.dark-mode { background-color: #000000; }
+/* --- РЕЖИМЫ (DARK/MUSIC) --- */
+
+.screen.dark-mode {
+    background-color: #000000;
+}
 .screen.dark-mode .brand, 
-.screen.dark-mode .temp-block { color: var(--accent-color); }
-.screen.dark-mode .overlay { background: rgba(0, 0, 0, 0.5); }
+.screen.dark-mode .temp-block {
+    color: var(--accent-color);
+}
+.screen.dark-mode .overlay {
+    background: rgba(0, 0, 0, 0.5); 
+}
 
 #bg-cover-full {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
     background-size: cover;
-    filter: blur(12px) brightness(0.4);
+    background-position: center;
+    filter: blur(15px) brightness(0.4); /* Усилил блюр для стиля */
     opacity: 0; 
     transition: opacity 1s ease-in-out;
     z-index: 0;
     border-radius: 50%; 
 }
+
 #bg-cover-full.active { opacity: 1; }
+
+.track-container {
+    width: 100%;
+    overflow: hidden; 
+    white-space: nowrap;
+    position: relative;
+}
+
+.track-name {
+    display: inline-block; 
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: -1px;
+    will-change: transform;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    10% { transform: translateX(0); } /* Задержка в начале */
+    90% { transform: translateX(-100%); } 
+    100% { transform: translateX(0); } 
+}
+
+.animate-marquee {
+    animation: marquee 10s linear infinite;
+    padding-right: 50px; 
+}
+
+.overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.82); 
+    z-index: 1;
+    transition: background 0.4s ease;
+    border-radius: 50%;
+}
 
 .brand {
     position: absolute;
-    top: 65px; /* Опустили для 320px */
+    top: 100px; /* Немного поднял для баланса */
     width: 100%;
     text-align: center;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     color: #000000;
     z-index: 10;
+    transition: color 0.4s ease;
 }
 
 canvas { 
@@ -81,7 +138,7 @@ canvas {
     display: flex; 
     justify-content: center; 
     align-items: center;
-    gap: 25px; /* Уменьшили зазор */
+    gap: 40px; 
     z-index: 6;
 }
 
@@ -89,82 +146,87 @@ canvas {
     display: flex; 
     flex-direction: column; 
     align-items: center; 
+    color: #000000; 
+    transition: color 0.4s ease;
 }
 
 .temp-val { 
-    font-size: 58px; /* Уменьшили с 82 */
+    font-size: 82px; 
     font-weight: 700; 
     line-height: 1; 
     display: flex;
 }
 
 .temp-val span:last-child {
-    font-size: 22px;
-    margin-top: 5px;
+    font-size: 34px;
+    margin-top: 8px;
+    font-weight: 500;
 }
 
 .temp-label { 
-    font-size: 14px; 
+    font-size: 22px; 
+    color: inherit; 
     font-weight: 800; 
-    margin-top: 2px;
+    text-transform: uppercase; 
+    margin-top: 4px;
 }
 
-/* Плеер адаптирован под узкий экран */
 .music-pill {
     position: absolute;
-    bottom: 30px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     background: rgba(10, 10, 10, 0.85); 
-    backdrop-filter: blur(10px);
-    border-radius: 50px; 
-    padding: 5px 15px 5px 5px; 
-    min-width: 110px; 
-    max-width: 200px; 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 100px; 
+    padding: 8px 20px 8px 8px; 
+    min-width: 140px; 
+    max-width: 260px; 
     border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     z-index: 100;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.5s ease;
+    transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .music-pill.active {
     opacity: 1;
     visibility: visible;
-    bottom: 60px; 
+    bottom: 90px; 
 }
 
 .cover-wrapper {
-    width: 32px; height: 32px; /* Компактнее */
+    width: 44px; height: 44px;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.cover-art {
+    width: 100%; height: 100%;
+    background-size: cover; /* Для музыки лучше cover */
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .music-info {
-    margin-left: 10px;
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     overflow: hidden;
-}
-
-.track-name {
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
 }
 
 .artist-name {
     color: #aaa;
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 800;
-}
-
-.overlay {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(255, 255, 255, 0.82); 
-    z-index: 1;
-    border-radius: 50%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
