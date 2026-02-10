@@ -1,0 +1,227 @@
+/* Базовые переменные для динамической настройки */
+:root {
+    --cpu-color: #50b4ff;
+    --gpu-color: #9b59ff;
+    --accent-color: #ffffff;
+}
+
+body { 
+    background: #000000; 
+    margin: 0; 
+    padding: 0;
+    overflow: hidden;
+    width: 480px; 
+    height: 480px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.screen { 
+    position: relative; 
+    width: 480px; 
+    height: 480px; 
+    background-color: #ffffff; 
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- ТЕМЫ --- */
+
+/* Тема: Cyberpunk */
+.screen.theme-cyberpunk {
+    background-color: #fcee0a;
+}
+.screen.theme-cyberpunk .brand { color: #000; font-family: 'Courier New', monospace; text-shadow: 2px 2px #00ff41; }
+.screen.theme-cyberpunk .temp-block { color: #000; }
+
+/* Тема: Minimal */
+.screen.theme-minimal {
+    background-color: #111;
+}
+.screen.theme-minimal .overlay { display: none; }
+.screen.theme-minimal .brand { letter-spacing: 10px; font-weight: 200; }
+
+/* --- РЕЖИМЫ (DARK/MUSIC) --- */
+
+.screen.dark-mode {
+    background-color: #000000;
+}
+.screen.dark-mode .brand, 
+.screen.dark-mode .temp-block {
+    color: var(--accent-color);
+}
+.screen.dark-mode .overlay {
+    background: rgba(0, 0, 0, 0.5); 
+}
+
+#bg-cover-full {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(8px) brightness(0.6); /* Чуть больше блюра для читаемости */
+    opacity: 0; 
+    transition: opacity 1s ease-in-out;
+    z-index: 0;
+    border-radius: 50%; 
+}
+
+#bg-cover-full.active { opacity: 1; }
+
+.track-container {
+    width: 100%;
+    overflow: hidden; 
+    white-space: nowrap;
+    position: relative;
+}
+
+.track-name {
+    display: inline-block; 
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: -1px;
+    will-change: transform;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(0); } 
+    80% { transform: translateX(-100%); } 
+    100% { transform: translateX(0); } 
+}
+
+.animate-marquee {
+    animation: marquee 8s linear infinite;
+    padding-right: 50px; 
+}
+
+.overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.82); 
+    z-index: 1;
+    transition: background 0.4s ease;
+}
+
+.brand {
+    position: absolute;
+    top: 110px; 
+    width: 100%;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #000000;
+    z-index: 10;
+    transition: color 0.4s ease;
+}
+
+canvas { 
+    position: absolute; 
+    top: 0; left: 0; 
+    z-index: 5; 
+}
+
+.data-layer {
+    position: absolute; 
+    top: -10px; left: 0; 
+    width: 100%; height: 100%;
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    gap: 40px; 
+    z-index: 6;
+}
+
+.temp-block { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    color: #000000; 
+    transition: color 0.4s ease;
+}
+
+.temp-val { 
+    font-size: 82px; 
+    font-weight: 700; 
+    line-height: 1; 
+    display: flex;
+}
+
+.temp-val span:last-child {
+    font-size: 34px;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.temp-label { 
+    font-size: 22px; 
+    color: inherit; 
+    font-weight: 800; 
+    text-transform: uppercase; 
+    margin-top: 4px;
+}
+
+.music-pill {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background: rgba(10, 10, 10, 0.92); 
+    backdrop-filter: blur(10px); /* Эффект стекла */
+    border-radius: 100px; 
+    padding: 6px 20px 6px 6px; 
+    min-width: 140px; 
+    max-width: 240px; 
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.music-pill.active {
+    opacity: 1;
+    visibility: visible;
+    bottom: 90px; 
+}
+
+.cover-wrapper {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.cover-art {
+    width: 100%; height: 100%;
+    background-size: 65%; 
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.music-info {
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.artist-name {
+    color: #aaa;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
