@@ -10,16 +10,19 @@ import os
 import sys
 import shutil
 import webview
+import logging
 from aiohttp import web
 from threading import Thread
 import time
+
+# Отключаем лишний спам в консоль
+logging.getLogger('aiohttp.access').setLevel(logging.ERROR)
 
 # --- КОНФИГУРАЦИЯ ПУТЕЙ ---
 APP_NAME = "KrakenIntegra"
 APPDATA_PATH = os.path.join(os.environ['APPDATA'], APP_NAME)
 EXE_NAME = "KrakenControl.exe"
 FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
-
 CONFIG_URL = "https://terpilin.github.io/krakenMedia/config.html"
 
 # --- СОСТОЯНИЕ ---
@@ -32,12 +35,15 @@ def install_and_setup():
         os.makedirs(APPDATA_PATH)
 
     current_exe = sys.executable
-    # Если запущен не из AppData и не в режиме разработки (python.exe)
     if "python.exe" not in current_exe.lower() and os.path.abspath(current_exe) != os.path.abspath(FINAL_EXE_PATH):
         try:
             shutil.copy2(current_exe, FINAL_EXE_PATH)
+            # Обязательно: pip install pywin32
             from win32com.client import Dispatch
             shell = Dispatch('WScript.Shell')
+
+            # Путь к EXE с кавычками для защиты от пробелов в путях
+            quoted_path = f'"{FINAL_EXE_PATH}"'
 
             startup = os.path.join(os.environ['APPDATA'], r'Microsoft\Windows\Start Menu\Programs\Startup')
             s_link = shell.CreateShortCut(os.path.join(startup, f"{APP_NAME}_Service.lnk"))
@@ -50,9 +56,9 @@ def install_and_setup():
             c_link = shell.CreateShortCut(os.path.join(desktop, "Kraken Control Center.lnk"))
             c_link.Targetpath = FINAL_EXE_PATH
             c_link.Arguments = "--config"
-            c_link.IconLocation = FINAL_EXE_PATH
             c_link.save()
 
+            # Запуск копии из AppData
             os.startfile(FINAL_EXE_PATH, arguments="--service")
             sys.exit()
         except Exception as e:
@@ -115,7 +121,6 @@ async def ws_handler(websocket):
             break
 
 async def change_theme(request):
-    # Обработка CORS preflight (OPTIONS)
     if request.method == 'OPTIONS':
         return web.Response(headers={
             "Access-Control-Allow-Origin": "*",
@@ -132,40 +137,52 @@ async def change_theme(request):
     })
 
 def start_servers():
+    async def run_main():
+        # Запуск WebSocket
+        async with websockets.serve(ws_handler, "127.0.0.1", 8765, ping_interval=20):
+            # Настройка HTTP
+            app = web.Application()
+            app.add_routes([
+                web.get('/set_theme/{name}', change_theme),
+                web.options('/set_theme/{name}', change_theme)
+            ])
+            
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, '127.0.0.1', 8080)
+            await site.start()
+            
+            print(">>> СЕРВЕРЫ ЗАПУЩЕНЫ: WS:8765, HTTP:8080")
+            await asyncio.Future() # Работаем бесконечно
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
-    # Добавлен ping_interval для стабильности
-    ws_server = websockets.serve(ws_handler, "127.0.0.1", 8765, ping_interval=20)
-    
-    app = web.Application()
-    app.add_routes([
-        web.get('/set_theme/{name}', change_theme),
-        web.options('/set_theme/{name}', change_theme)
-    ])
-    
-    runner = web.AppRunner(app)
-    loop.run_until_complete(runner.setup())
-    site = web.TCPSite(runner, '127.0.0.1', 8080)
-    
-    print(">>> Серверы запущены: WS:8765, HTTP:8080")
-    loop.run_until_complete(asyncio.gather(ws_server, site.start()))
-    loop.run_forever()
+    try:
+        loop.run_until_complete(run_main())
+    except Exception as e:
+        print(f"Цикл серверов остановлен: {e}")
 
 if __name__ == "__main__":
-    # 1. Установка (только если это EXE билд)
+    # 1. Установка
     if getattr(sys, 'frozen', False):
         install_and_setup()
 
     is_config = "--config" in sys.argv
 
-    # 2. Запуск серверов в фоне
-    Thread(target=start_servers, daemon=True).start()
+    # 2. Поток серверов
+    server_thread = Thread(target=start_servers, daemon=True)
+    server_thread.start()
+
+    time.sleep(1)
 
     if is_config:
-        print(">>> Запуск окна управления...")
+        print(">>> Открытие Kraken Control Center...")
         webview.create_window('Kraken Control Center', CONFIG_URL, width=940, height=620, resizable=False)
         webview.start()
     else:
-        print(">>> Сервис работает в фоне...")
-        while True: time.sleep(10)
+        print(">>> Kraken работает в фоне. Закройте консоль для выхода.")
+        try:
+            while True:
+                time.sleep(10)
+        except KeyboardInterrupt:
+            pass
