@@ -1,10 +1,229 @@
-body, html { background: #000; margin: 0; padding: 0; width: 320px; height: 320px; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-.screen { position: relative; width: 320px; height: 320px; border-radius: 50%; overflow: hidden; }
-#bg-cover-full { position: absolute; width: 100%; height: 100%; background-size: cover; filter: blur(10px) brightness(0.3); opacity: 0.8; }
-.brand { position: absolute; top: 55px; width: 100%; text-align: center; color: #fff; opacity: 0.4; font-weight: 900; font-size: 14px; z-index: 10; }
-canvas { position: absolute; top: 0; left: 0; }
-.data-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; gap: 20px; z-index: 6; color: #fff; }
-.temp-val { font-size: 64px; font-weight: 700; line-height: 1; }
-.temp-label { font-size: 14px; font-weight: 800; opacity: 0.5; text-align: center; }
-.music-pill { position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; background: rgba(0,0,0,0.8); border-radius: 30px; padding: 5px 12px; transition: 0.5s; z-index: 20; }
-.music-pill.active { bottom: 65px; }
+/* Базовые переменные остаются прежними */
+:root {
+    --cpu-color: #50b4ff;
+    --gpu-color: #9b59ff;
+    --accent-color: #ffffff;
+}
+
+body, html { 
+    background: #000000; 
+    margin: 0; 
+    padding: 0;
+    overflow: hidden;
+    width: 320px; 
+    height: 320px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.screen { 
+    position: relative; 
+    width: 320px; 
+    height: 320px; 
+    background-color: #ffffff; 
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+}
+
+/* --- ТЕМЫ --- */
+.screen.theme-cyberpunk { background-color: #fcee0a; }
+.screen.theme-cyberpunk .brand { color: #000; text-shadow: 1px 1px #00ff41; }
+.screen.theme-cyberpunk .temp-block { color: #000; }
+
+.screen.theme-minimal { background-color: #111; }
+.screen.theme-minimal .brand { color: #fff; letter-spacing: 5px; }
+.screen.theme-minimal .temp-block { color: #fff; }
+
+/* --- РЕЖИМЫ --- */
+.screen.dark-mode { background-color: #000000; }
+.screen.dark-mode .brand, 
+.screen.dark-mode .temp-block { color: var(--accent-color); }
+.screen.dark-mode .overlay { background: rgba(0, 0, 0, 0.5); }
+
+#bg-cover-full {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-size: cover;
+    filter: blur(3px) brightness(0.4);
+    opacity: 0; 
+    transition: opacity 1s ease-in-out;
+    z-index: 0;
+    border-radius: 50%; 
+}
+#bg-cover-full.active { opacity: 1; }
+
+.track-container {
+    width: 100%;
+    overflow: hidden; 
+    white-space: nowrap;
+    position: relative;
+}
+
+.track-name {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(0); } 
+    80% { transform: translateX(-100%); } 
+    100% { transform: translateX(0); } 
+}
+
+.animate-marquee {
+    animation: marquee 8s linear infinite;
+    padding-right: 50px; 
+}
+
+.overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.82); 
+    z-index: 1;
+    border-radius: 50%;
+    transition: background 0.4s ease;
+}
+
+
+.brand {
+    position: absolute;
+    top: 65px; /* Опустили для 320px */
+    width: 100%;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #000000;
+    z-index: 10;
+    transition: color 0.4s ease;
+}
+
+canvas { 
+    position: absolute; 
+    top: 0; left: 0; 
+    z-index: 5; 
+}
+
+.data-layer {
+    position: absolute; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    gap: 25px; /* Уменьшили зазор */
+    z-index: 6;
+}
+
+.temp-block { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    color: #000000; 
+    transition: color 0.4s ease;
+}
+
+.temp-val { 
+    font-size: 58px; /* Уменьшили с 82 */
+    font-weight: 700; 
+    line-height: 1; 
+    display: flex;
+}
+
+.temp-val span:last-child {
+    font-size: 22px;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.temp-label { 
+    font-size: 14px; 
+    color: inherit;
+    font-weight: 800; 
+    text-transform: uppercase; 
+    margin-top: 2px;
+}
+
+/* Плеер адаптирован под узкий экран */
+.music-pill {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background: rgba(10, 10, 10, 0.85); 
+    backdrop-filter: blur(10px);
+    border-radius: 50px; 
+    padding: 5px 15px 5px 5px; 
+    min-width: 130px; 
+    max-width: 150px; 
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.music-pill.active {
+    opacity: 1;
+    visibility: visible;
+    bottom: 70px; 
+}
+
+.cover-wrapper {
+    width: 32px; height: 32px; /* Компактнее */
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+     background: rgba(255, 255, 255, 0.08);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.cover-art {
+    width: 100%; height: 100%;
+    background-size: 65%; 
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.music-info {
+    margin-left: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+.artist-container {
+    width: 150%;
+    overflow: hidden; 
+    white-space: nowrap;
+    position: relative;
+}
+.artist-name {
+    color: #aaa;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(0); } 
+    80% { transform: translateX(-100%); } 
+    100% { transform: translateX(0); } 
+}
+
+.animate-marquee {
+    animation: marquee 8s linear infinite;
+    padding-right: 50px; 
+}
