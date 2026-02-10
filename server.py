@@ -20,7 +20,6 @@ APPDATA_PATH = os.path.join(os.environ['APPDATA'], APP_NAME)
 EXE_NAME = "KrakenControl.exe"
 FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
 
-# Твоя ссылка на GitHub Pages
 CONFIG_URL = "https://terpilin.github.io/krakenMedia/config.html"
 
 # --- СОСТОЯНИЕ ---
@@ -33,27 +32,26 @@ def install_and_setup():
         os.makedirs(APPDATA_PATH)
 
     current_exe = sys.executable
-    if os.path.abspath(current_exe) != os.path.abspath(FINAL_EXE_PATH):
+    # Если запущен не из AppData и не в режиме разработки (python.exe)
+    if "python.exe" not in current_exe.lower() and os.path.abspath(current_exe) != os.path.abspath(FINAL_EXE_PATH):
         try:
             shutil.copy2(current_exe, FINAL_EXE_PATH)
             from win32com.client import Dispatch
             shell = Dispatch('WScript.Shell')
 
-            # 1. Автозагрузка
             startup = os.path.join(os.environ['APPDATA'], r'Microsoft\Windows\Start Menu\Programs\Startup')
-            shortcut = shell.CreateShortCut(os.path.join(startup, f"{APP_NAME}_Service.lnk"))
-            shortcut.Targetpath = FINAL_EXE_PATH
-            shortcut.Arguments = "--service"
-            shortcut.WindowStyle = 7 
-            shortcut.save()
+            s_link = shell.CreateShortCut(os.path.join(startup, f"{APP_NAME}_Service.lnk"))
+            s_link.Targetpath = FINAL_EXE_PATH
+            s_link.Arguments = "--service"
+            s_link.WindowStyle = 7 
+            s_link.save()
 
-            # 2. Рабочий стол
             desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-            control_link = shell.CreateShortCut(os.path.join(desktop, "Kraken Control Center.lnk"))
-            control_link.Targetpath = FINAL_EXE_PATH
-            control_link.Arguments = "--config"
-            control_link.IconLocation = FINAL_EXE_PATH
-            control_link.save()
+            c_link = shell.CreateShortCut(os.path.join(desktop, "Kraken Control Center.lnk"))
+            c_link.Targetpath = FINAL_EXE_PATH
+            c_link.Arguments = "--config"
+            c_link.IconLocation = FINAL_EXE_PATH
+            c_link.save()
 
             os.startfile(FINAL_EXE_PATH, arguments="--service")
             sys.exit()
@@ -98,59 +96,76 @@ async def _get_media_data():
 
 # --- СЕРВЕРНАЯ ЛОГИКА ---
 async def ws_handler(websocket):
+    print(">>> WebSocket: Новое подключение экрана")
     while True:
         try:
             payload = {
                 "cpu_temp": int(psutil.cpu_percent()), 
-                "gpu_temp": int(psutil.virtual_memory().percent), # Пример, можно заменить на GPU
+                "gpu_temp": int(psutil.virtual_memory().percent), 
                 "music": await _get_media_data(),
                 "theme": current_theme 
             }
             await websocket.send(json.dumps(payload))
             await asyncio.sleep(1)
-        except: break
+        except websockets.exceptions.ConnectionClosed:
+            print(">>> WebSocket: Экран отключен")
+            break
+        except Exception as e:
+            print(f"Ошибка WS: {e}")
+            break
 
 async def change_theme(request):
+    # Обработка CORS preflight (OPTIONS)
+    if request.method == 'OPTIONS':
+        return web.Response(headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        })
+
     global current_theme
     current_theme = request.match_info.get('name', "default")
     print(f">>> Тема изменена на: {current_theme}")
-    # Важно: CORS заголовки, чтобы GitHub Pages мог достучаться до локалки
     return web.Response(text="OK", headers={
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
+        "Access-Control-Allow-Methods": "GET, OPTIONS"
     })
 
 def start_servers():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
-    ws_server = websockets.serve(ws_handler, "127.0.0.1", 8765)
+    # Добавлен ping_interval для стабильности
+    ws_server = websockets.serve(ws_handler, "127.0.0.1", 8765, ping_interval=20)
+    
     app = web.Application()
-    app.add_routes([web.get('/set_theme/{name}', change_theme)])
+    app.add_routes([
+        web.get('/set_theme/{name}', change_theme),
+        web.options('/set_theme/{name}', change_theme)
+    ])
     
     runner = web.AppRunner(app)
     loop.run_until_complete(runner.setup())
     site = web.TCPSite(runner, '127.0.0.1', 8080)
     
+    print(">>> Серверы запущены: WS:8765, HTTP:8080")
     loop.run_until_complete(asyncio.gather(ws_server, site.start()))
     loop.run_forever()
 
 if __name__ == "__main__":
-    # 1. Установка
-    install_and_setup()
+    # 1. Установка (только если это EXE билд)
+    if getattr(sys, 'frozen', False):
+        install_and_setup()
 
-    # 2. Определение режима
-    is_service = "--service" in sys.argv
     is_config = "--config" in sys.argv
 
-    # 3. Запуск серверов в фоне
+    # 2. Запуск серверов в фоне
     Thread(target=start_servers, daemon=True).start()
 
     if is_config:
-        # Открываем окно управления
+        print(">>> Запуск окна управления...")
         webview.create_window('Kraken Control Center', CONFIG_URL, width=940, height=620, resizable=False)
         webview.start()
     else:
-        # Режим службы (висим в процессах)
-        while True: time.sleep(100)
+        print(">>> Сервис работает в фоне...")
+        while True: time.sleep(10)
