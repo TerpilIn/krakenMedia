@@ -1,69 +1,161 @@
-import asyncio, websockets, json, psutil, base64, os, sys, time
+import asyncio
+import websockets
+import json
+import psutil 
 import winrt.windows.media.control as wmc
 import winrt.windows.storage.streams as streams
+import base64
+import os
+import sys
+import shutil
+import webview
+import logging
 from aiohttp import web
 from threading import Thread
+import time
 
-# --- СОСТОЯНИЕ ---
-state = {"last_track": "", "cover": None, "service": "other", "theme": "default"}
+# Отключаем лишний спам
+logging.getLogger('aiohttp.access').setLevel(logging.ERROR)
 
-def get_stats():
-    # Реальный WMI часто капризный, поэтому пока используем нагрузку для теста
-    # Но масштабируем её, чтобы цифры были похожи на правду (35-70 градусов)
-    cpu = int(35 + (psutil.cpu_percent() * 0.4))
-    gpu = int(40 + (psutil.virtual_memory().percent * 0.3))
-    return cpu, gpu
+# --- КОНФИГУРАЦИЯ ---
+APP_NAME = "KrakenIntegra"
+APPDATA_PATH = os.path.join(os.environ['APPDATA'], APP_NAME)
+EXE_NAME = "KrakenControl.exe"
+FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
+CONFIG_URL = "https://terpilin.github.io/krakenMedia/config.html"
 
-async def _get_media():
+# --- СОСТОЯНИЕ (КАК БЫЛО) ---
+last_track_id = ""
+last_cover_b64 = None
+current_service = "other"
+current_theme = "default"
+
+# --- ЛОГИКА ИНСТАЛЛЯЦИИ ---
+def install_and_setup():
+    if not os.path.exists(APPDATA_PATH):
+        os.makedirs(APPDATA_PATH)
+
+    current_exe = sys.executable
+    if "python.exe" not in current_exe.lower() and os.path.abspath(current_exe) != os.path.abspath(FINAL_EXE_PATH):
+        try:
+            shutil.copy2(current_exe, FINAL_EXE_PATH)
+            from win32com.client import Dispatch
+            shell = Dispatch('WScript.Shell')
+
+            startup = os.path.join(os.environ['APPDATA'], r'Microsoft\Windows\Start Menu\Programs\Startup')
+            s_link = shell.CreateShortCut(os.path.join(startup, f"{APP_NAME}_Service.lnk"))
+            s_link.Targetpath = FINAL_EXE_PATH
+            s_link.Arguments = "--service"
+            s_link.WindowStyle = 7 
+            s_link.save()
+
+            desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+            c_link = shell.CreateShortCut(os.path.join(desktop, "Kraken Control Center.lnk"))
+            c_link.Targetpath = FINAL_EXE_PATH
+            c_link.Arguments = "--config"
+            c_link.save()
+
+            os.startfile(FINAL_EXE_PATH, arguments="--service")
+            sys.exit()
+        except Exception:
+            pass
+
+# --- ТЕМПЕРАТУРЫ (ТОТ САМЫЙ МЕТОД) ---
+def get_hardware_stats():
+    cpu_val = 0
+    gpu_val = 0
+    try:
+        import wmi
+        w = wmi.WMI(namespace="root\\WMI")
+        # Получаем реальную температуру CPU
+        cpu_val = int((w.MSAcpi_ThermalZoneTemperature()[0].CurrentTemperature / 10.0) - 273.15)
+    except:
+        cpu_val = int(psutil.cpu_percent()) # Фоллбек на нагрузку
+
+    # Для видеокарты без OHM берем загрузку RAM как динамический показатель
+    gpu_val = int(psutil.virtual_memory().percent)
+    
+    return cpu_val, gpu_val
+
+# --- МЕДИА (С СОХРАНЕНИЕМ СЕРВИСА) ---
+async def _get_media_data():
+    global last_track_id, last_cover_b64, current_service
     try:
         manager = await wmc.GlobalSystemMediaTransportControlsSessionManager.request_async()
-        s = manager.get_current_session()
-        if not s: return None
-        p = await s.try_get_media_properties_async()
-        src = s.source_app_user_model_id.lower()
+        sessions = manager.get_sessions()
+        if not sessions: return None
         
-        if "spotify" in src: state["service"] = "spotify"
-        elif any(x in src for x in ["yandex", "45347"]): state["service"] = "yandex"
+        active_session = next((s for s in sessions if s.get_playback_info().playback_status == wmc.GlobalSystemMediaTransportControlsSessionPlaybackStatus.PLAYING), None)
+        if not active_session: active_session = manager.get_current_session() or sessions[0]
         
-        t_id = f"{p.title}{p.artist}"
-        if t_id != state["last_track"]:
-            state["last_track"] = t_id
-            if p.thumbnail:
-                stream = await p.thumbnail.open_read_async()
+        source_app = active_session.source_app_user_model_id.lower()
+        props = await active_session.try_get_media_properties_async()
+        
+        # Обновляем сервис только если нашли совпадение, иначе храним старый
+        if "spotify" in source_app: current_service = "spotify"
+        elif any(x in source_app for x in ["yandex", "45347"]): current_service = "yandex"
+        
+        track_id = f"{props.title}_{props.artist}"
+        if track_id != last_track_id:
+            last_track_id = track_id
+            if props.thumbnail:
+                stream = await props.thumbnail.open_read_async()
                 reader = streams.DataReader(stream.get_input_stream_at(0))
                 await reader.load_async(stream.size)
-                buf = bytearray(stream.size); reader.read_bytes(buf)
-                state["cover"] = base64.b64encode(buf).decode('utf-8')
-            else: state["cover"] = None
-        return {"title": p.title, "artist": p.artist, "service": state["service"], "cover": state["cover"]}
-    except: return None
+                buffer = bytearray(stream.size)
+                reader.read_bytes(buffer)
+                last_cover_b64 = base64.b64encode(buffer).decode('utf-8')
+            else:
+                last_cover_b64 = None
+            
+        return {"title": props.title, "artist": props.artist, "service": current_service, "cover": last_cover_b64}
+    except:
+        return None
 
-async def ws_handler(ws):
+# --- СЕРВЕРНАЯ ЛОГИКА ---
+async def ws_handler(websocket):
     while True:
         try:
-            c, g = get_stats()
-            await ws.send(json.dumps({
-                "cpu_temp": c, "gpu_temp": g, 
-                "music": await _get_media(), "theme": state["theme"]
-            }))
+            c, g = get_hardware_stats()
+            payload = {
+                "cpu_temp": c, 
+                "gpu_temp": g, 
+                "music": await _get_media_data(),
+                "theme": current_theme 
+            }
+            await websocket.send(json.dumps(payload))
             await asyncio.sleep(1)
-        except: break
+        except:
+            break
+
+async def change_theme(request):
+    global current_theme
+    current_theme = request.match_info.get('name', "default")
+    return web.Response(text="OK", headers={"Access-Control-Allow-Origin": "*"})
 
 def start_servers():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    async def main():
-        # Запуск WS сервера
-        async with websockets.serve(ws_handler, "127.0.0.1", 8765):
-            # Запуск HTTP сервера для тем
+    async def run_main():
+        async with websockets.serve(ws_handler, "127.0.0.1", 8765, ping_interval=20):
             app = web.Application()
-            app.add_routes([web.get('/set_theme/{name}', lambda r: (state.update({"theme": r.match_info['name']}), web.Response(text="OK", headers={"Access-Control-Allow-Origin": "*"}))[1])])
+            app.add_routes([web.get('/set_theme/{name}', change_theme)])
             runner = web.AppRunner(app); await runner.setup()
             await web.TCPSite(runner, '127.0.0.1', 8080).start()
-            await asyncio.Future() # Работаем вечно
-    loop.run_until_complete(main())
+            await asyncio.Future()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_main())
 
 if __name__ == "__main__":
-    Thread(target=start_servers, daemon=True).start()
-    print(">>> СЕРВЕР КРАКЕНА ЗАПУЩЕН (Порты 8765 и 8080)")
-    while True: time.sleep(1)
+    if getattr(sys, 'frozen', False):
+        install_and_setup()
+
+    server_thread = Thread(target=start_servers, daemon=True)
+    server_thread.start()
+
+    if "--config" in sys.argv:
+        webview.create_window('Kraken Control Center', CONFIG_URL, width=940, height=620, resizable=False)
+        webview.start()
+    else:
+        while True:
+            time.sleep(10)
