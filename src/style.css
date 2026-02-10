@@ -4,6 +4,20 @@
     --gpu-color: #9b59ff;
     --accent-color: #ffffff;
 }
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 480px;
+    height: 480px;
+    overflow: hidden; /* Чтобы не было полос прокрутки */
+    background: black; /* Чтобы не слепило белым при загрузке */
+}
+
+.screen {
+    width: 480px;
+    height: 480px;
+    position: relative;
+}
 
 body { 
     background: #000000; 
@@ -225,3 +239,4 @@ canvas {
     text-transform: uppercase;
     letter-spacing: 1px;
 }
+
