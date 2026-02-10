@@ -1,0 +1,6 @@
+asyncio
+websockets
+psutil
+pygetwindow
+winrt-Windows.Media.Control
+winrt-Windows.Storage.Streams

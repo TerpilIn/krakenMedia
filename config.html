@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Kraken Control Center</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: #161616;
+            --accent: #50b4ff;
+            --text: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            margin: 0;
+        }
+
+        h1 { font-weight: 800; letter-spacing: -1px; margin-bottom: 30px; }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 900px;
+        }
+
+        .theme-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .theme-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(80, 180, 255, 0.3);
+        }
+
+        .preview {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        /* Цвета превью */
+        .p-default { background: linear-gradient(45deg, #50b4ff, #9b59ff); }
+        .p-cyber { background: #fcee0a; color: #000; }
+        .p-minimal { background: #333; border: 1px solid #555; }
+
+        .theme-name { font-size: 18px; font-weight: 600; }
+
+        .status {
+            margin-top: 40px;
+            padding: 10px 20px;
+            border-radius: 100px;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff41;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot { width: 8px; height: 8px; background: #00ff41; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+    <h1>Kraken Control Center</h1>
+
+    <div class="theme-grid">
+        <div class="theme-card active" onclick="setTheme('default', this)">
+            <div class="preview p-default">Default</div>
+            <div class="theme-name">Integra Blue</div>
+        </div>
+
+        <div class="theme-card" onclick="setTheme('cyberpunk', this)">
+            <div class="preview p-cyber">Cyberpunk</div>
+            <div class="theme-name">Night City</div>
+        </div>
+
+        <div class="theme-card" onclick="setTheme('minimal', this)">
+            <div class="preview p-minimal">Minimal</div>
+            <div class="theme-name">Dark Mode</div>
+        </div>
+    </div>
+
+    <div class="status">
+        <div class="dot"></div> Сервер активен: 127.0.0.1:8080
+    </div>
+
+    <script>
+        async function setTheme(name, element) {
+            // Убираем активный класс у всех
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+            // Добавляем текущему
+            element.classList.add('active');
+
+            try {
+                // Отправляем запрос на наш Python сервер
+                const response = await fetch(`http://127.0.0.1:8080/set_theme/${name}`);
+                console.log('Тема переключена:', name);
+            } catch (error) {
+                alert('Ошибка: убедитесь, что server.py запущен!');
+            }
+        }
+    </script>
+</body>
+</html>
