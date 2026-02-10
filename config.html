@@ -20,7 +20,6 @@
             align-items: center;
             padding: 40px;
             margin: 0;
-            user-select: none; /* Чтобы нельзя было случайно выделить текст */
         }
 
         h1 { font-weight: 800; letter-spacing: -1px; margin-bottom: 30px; }
@@ -67,6 +66,7 @@
             text-transform: uppercase;
         }
 
+        /* Цвета превью */
         .p-default { background: linear-gradient(45deg, #50b4ff, #9b59ff); }
         .p-cyber { background: #fcee0a; color: #000; }
         .p-minimal { background: #333; border: 1px solid #555; }
@@ -86,10 +86,6 @@
         }
 
         .dot { width: 8px; height: 8px; background: #00ff41; border-radius: 50%; }
-        
-        /* Стили для ошибки */
-        .status.error { background: rgba(255, 0, 0, 0.1); color: #ff4b4b; }
-        .status.error .dot { background: #ff4b4b; }
     </style>
 </head>
 <body>
@@ -97,51 +93,39 @@
     <h1>Kraken Control Center</h1>
 
     <div class="theme-grid">
-        <div class="theme-card active" id="card-default" onclick="setTheme('default', this)">
+        <div class="theme-card active" onclick="setTheme('default', this)">
             <div class="preview p-default">Default</div>
             <div class="theme-name">Integra Blue</div>
         </div>
 
-        <div class="theme-card" id="card-cyberpunk" onclick="setTheme('cyberpunk', this)">
+        <div class="theme-card" onclick="setTheme('cyberpunk', this)">
             <div class="preview p-cyber">Cyberpunk</div>
             <div class="theme-name">Night City</div>
         </div>
 
-        <div class="theme-card" id="card-minimal" onclick="setTheme('minimal', this)">
+        <div class="theme-card" onclick="setTheme('minimal', this)">
             <div class="preview p-minimal">Minimal</div>
             <div class="theme-name">Dark Mode</div>
         </div>
     </div>
 
-    <div id="status-bar" class="status">
-        <div class="dot"></div> <span id="status-text">Сервер активен: 127.0.0.1:8080</span>
+    <div class="status">
+        <div class="dot"></div> Сервер активен: 127.0.0.1:8080
     </div>
 
     <script>
         async function setTheme(name, element) {
-            const statusText = document.getElementById('status-text');
-            const statusBar = document.getElementById('status-bar');
-
-            // Визуальное переключение
+            // Убираем активный класс у всех
             document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+            // Добавляем текущему
             element.classList.add('active');
 
             try {
-                // Пытаемся отправить запрос
-                const response = await fetch(`http://127.0.0.1:8080/set_theme/${name}`, {
-                    method: 'GET',
-                    mode: 'cors' // Важно для работы с Python сервером
-                });
-
-                if (response.ok) {
-                    console.log('Тема успешно переключена:', name);
-                    statusBar.classList.remove('error');
-                    statusText.innerText = `Тема установлена: ${name}`;
-                }
+                // Отправляем запрос на наш Python сервер
+                const response = await fetch(`http://127.0.0.1:8080/set_theme/${name}`);
+                console.log('Тема переключена:', name);
             } catch (error) {
-                console.error('Ошибка сервера:', error);
-                statusBar.classList.add('error');
-                statusText.innerText = 'Ошибка: убедитесь, что KrakenControl запущен!';
+                alert('Ошибка: убедитесь, что server.py запущен!');
             }
         }
     </script>
