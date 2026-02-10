@@ -15,7 +15,6 @@ let themeConfig = {
 
 // Функция инициализации сокета с авто-реконнектом
 function connect() {
-    // Закрываем старый сокет, если он остался висеть
     if (socket) {
         socket.onopen = null;
         socket.onmessage = null;
@@ -41,24 +40,23 @@ function connect() {
     };
 
     socket.onclose = () => {
-        console.log(">>> Связь потеряна. Попытка переподключения через 2с...");
+        console.log(">>> Связь потеряна. Реконнект через 2с...");
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connect, 2000);
     };
 
-    socket.onerror = (err) => {
-        // Не выводим ошибку, если она вызвана просто отсутствием сервера
+    socket.onerror = () => {
         socket.close();
     };
 }
 
-// Рендеринг графики
+// Рендеринг графики (Адаптировано под 320x320)
 function draw(cpu, gpu) {
-    const x = 240, y = 240; 
-    const radius = 205; // Чуть уменьшил, чтобы не «резало» края при lineWidth 50
-    const width = 50;
+    const x = 160, y = 160; // Центр экрана 320/2
+    const radius = 138;     // Подобрано под отступы 320px
+    const width = 35;       // Линии стали чуть тоньше для изящности
     
-    ctx.clearRect(0, 0, 480, 480);
+    ctx.clearRect(0, 0, 320, 320);
 
     const screen = document.querySelector('.screen');
     const isDark = screen.classList.contains('dark-mode') || screen.classList.contains('theme-minimal');
@@ -71,6 +69,7 @@ function draw(cpu, gpu) {
     ctx.stroke();
 
     // CPU Дуга (Слева)
+    // Угол распространения 0.35 * PI (~63 градуса в каждую сторону от центра)
     const cpuSpread = (Math.min(cpu, 100) / 100) * (0.35 * Math.PI);
     ctx.beginPath();
     ctx.arc(x, y, radius, Math.PI - cpuSpread, Math.PI + cpuSpread);
@@ -93,7 +92,6 @@ function draw(cpu, gpu) {
 function applyTheme(themeName) {
     const screen = document.querySelector('.screen');
     
-    // Удаляем все классы, начинающиеся на theme-
     const classes = Array.from(screen.classList);
     classes.forEach(cls => {
         if (cls.startsWith('theme-')) screen.classList.remove(cls);
@@ -123,25 +121,21 @@ function handleServerData(data) {
     const artistElem = document.getElementById('artist-name');
     const trackContainer = document.querySelector('.track-container');
 
-    // 1. Тема
     if (data.theme && data.theme !== themeConfig.name) {
         applyTheme(data.theme);
     }
 
-    // 2. Датчики
     const cpu = data.cpu_temp || 0;
     const gpu = data.gpu_temp || 0;
     document.getElementById('cpu-temp').innerText = cpu;
     document.getElementById('gpu-temp').innerText = gpu;
     draw(cpu, gpu);
 
-    // 3. Музыка
     if (data.music && data.music.title) {
         screen.classList.add('dark-mode');
         pill.classList.add('active');
         
         const service = data.music.service || 'other';
-        // Относительный путь для GitHub Pages
         pillCover.style.backgroundImage = `url('assets/${service}.png')`;
 
         if (trackElem.innerText !== data.music.title) {
@@ -163,7 +157,6 @@ function handleServerData(data) {
             bgFull.style.backgroundImage = "none";
         }
     } else {
-        // Если музыка не играет, сбрасываем всё
         screen.classList.remove('dark-mode');
         pill.classList.remove('active');
         bgFull.classList.remove('active');
@@ -174,5 +167,4 @@ function handleServerData(data) {
     }
 }
 
-// Запуск
 connect();
