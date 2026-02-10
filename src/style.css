@@ -10,8 +10,8 @@ body, html {
     margin: 0; 
     padding: 0;
     overflow: hidden;
-    width: 480px; 
-    height: 480px;
+    width: 320px; 
+    height: 320px;
     display: flex; 
     align-items: center; 
     justify-content: center;
@@ -20,8 +20,8 @@ body, html {
 
 .screen { 
     position: relative; 
-    width: 480px; 
-    height: 480px; 
+    width: 320px; 
+    height: 320px; 
     background-color: #ffffff; 
     overflow: hidden;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -230,3 +230,4 @@ canvas {
     text-transform: uppercase;
     letter-spacing: 1px;
 }
+
