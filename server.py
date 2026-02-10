@@ -21,7 +21,7 @@ EXE_NAME = "KrakenControl.exe"
 FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
 
 # Замени на свою ссылку после включения GitHub Pages
-CONFIG_URL = "https://твой-логин.github.io/название-репо/config.html"
+CONFIG_URL = "https://terpilin.github.io/krakenMedia/"
 
 # --- СОСТОЯНИЕ ---
 last_track_id, last_cover_b64, current_service = "", None, "other"
@@ -158,3 +158,4 @@ if __name__ == "__main__":
         # Режим сервиса: просто висим в памяти
         while True:
             time.sleep(10)
+
