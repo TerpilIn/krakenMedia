@@ -15,6 +15,15 @@ let themeConfig = {
 
 // Функция инициализации сокета с авто-реконнектом
 function connect() {
+    // Закрываем старый сокет, если он остался висеть
+    if (socket) {
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onclose = null;
+        socket.onerror = null;
+        socket.close();
+    }
+
     socket = new WebSocket(WS_URL);
 
     socket.onopen = () => {
@@ -32,22 +41,27 @@ function connect() {
     };
 
     socket.onclose = () => {
-        console.log(">>> Связь потеряна. Попытка переподключения...");
-        reconnectTimer = setTimeout(connect, 2000); // Пробуем снова через 2 сек
+        console.log(">>> Связь потеряна. Попытка переподключения через 2с...");
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, 2000);
     };
 
     socket.onerror = (err) => {
-        console.error("Ошибка сокета. Возможно, EXE не запущен.");
+        // Не выводим ошибку, если она вызвана просто отсутствием сервера
         socket.close();
     };
 }
 
 // Рендеринг графики
 function draw(cpu, gpu) {
-    const x = 240, y = 240, radius = 210, width = 50;
+    const x = 240, y = 240; 
+    const radius = 205; // Чуть уменьшил, чтобы не «резало» края при lineWidth 50
+    const width = 50;
+    
     ctx.clearRect(0, 0, 480, 480);
 
-    const isDark = document.querySelector('.screen').classList.contains('dark-mode');
+    const screen = document.querySelector('.screen');
+    const isDark = screen.classList.contains('dark-mode') || screen.classList.contains('theme-minimal');
     
     // Фоновое кольцо
     ctx.beginPath();
@@ -56,7 +70,7 @@ function draw(cpu, gpu) {
     ctx.lineWidth = width;
     ctx.stroke();
 
-    // CPU Дуга
+    // CPU Дуга (Слева)
     const cpuSpread = (Math.min(cpu, 100) / 100) * (0.35 * Math.PI);
     ctx.beginPath();
     ctx.arc(x, y, radius, Math.PI - cpuSpread, Math.PI + cpuSpread);
@@ -65,7 +79,7 @@ function draw(cpu, gpu) {
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // GPU Дуга
+    // GPU Дуга (Справа)
     const gpuSpread = (Math.min(gpu, 100) / 100) * (0.35 * Math.PI);
     ctx.beginPath();
     ctx.arc(x, y, radius, 0 - gpuSpread, 0 + gpuSpread);
@@ -79,14 +93,15 @@ function draw(cpu, gpu) {
 function applyTheme(themeName) {
     const screen = document.querySelector('.screen');
     
-    // Чистим старые классы тем
-    const themes = ['theme-default', 'theme-cyberpunk', 'theme-minimal'];
-    themes.forEach(t => screen.classList.remove(t));
+    // Удаляем все классы, начинающиеся на theme-
+    const classes = Array.from(screen.classList);
+    classes.forEach(cls => {
+        if (cls.startsWith('theme-')) screen.classList.remove(cls);
+    });
     
     screen.classList.add(`theme-${themeName}`);
     themeConfig.name = themeName;
 
-    // Пресеты цветов для рисования
     const colors = {
         'cyberpunk': { cpu: '#fcee0a', gpu: '#00ff41' },
         'minimal':   { cpu: '#ffffff', gpu: '#888888' },
@@ -126,15 +141,15 @@ function handleServerData(data) {
         pill.classList.add('active');
         
         const service = data.music.service || 'other';
+        // Относительный путь для GitHub Pages
         pillCover.style.backgroundImage = `url('assets/${service}.png')`;
 
         if (trackElem.innerText !== data.music.title) {
             trackElem.innerText = data.music.title;
             artistElem.innerText = (data.music.artist || 'СИСТЕМА').toUpperCase();
             
-            // Перезапуск анимации бегущей строки
             trackElem.classList.remove('animate-marquee');
-            void trackElem.offsetWidth; // Магия для сброса анимации
+            void trackElem.offsetWidth; 
             if (trackElem.scrollWidth > trackContainer.offsetWidth) {
                 trackElem.classList.add('animate-marquee');
             }
@@ -145,12 +160,17 @@ function handleServerData(data) {
             bgFull.classList.add('active');
         } else {
             bgFull.classList.remove('active');
+            bgFull.style.backgroundImage = "none";
         }
     } else {
+        // Если музыка не играет, сбрасываем всё
         screen.classList.remove('dark-mode');
         pill.classList.remove('active');
         bgFull.classList.remove('active');
-        trackElem.innerText = "";
+        bgFull.style.backgroundImage = "none";
+        trackElem.classList.remove('animate-marquee');
+        trackElem.innerText = "Ожидание...";
+        artistElem.innerText = "СИСТЕМА";
     }
 }
 
