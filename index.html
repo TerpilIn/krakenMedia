@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NZXT Kraken 320</title>
+    <title>NZXT Integra Kraken</title>
     <link rel="stylesheet" href="src/style.css">
     <style>
-        /* Фиксация холста строго под размер экрана 320x320 */
+        /* Фикс размера, чтобы экран не "прыгал" при загрузке */
         body, html { 
             margin: 0; 
             padding: 0; 
-            width: 320px; 
-            height: 320px; 
+            width: 480px; 
+            height: 480px; 
             overflow: hidden; 
             background: #000; 
         }
@@ -24,15 +24,15 @@
         
         <div id="brand-label" class="brand">NZXT</div>
 
-        <canvas id="ring-canvas" width="320" height="320"></canvas>
+        <canvas id="ring-canvas" width="480" height="480"></canvas>
         
         <div class="data-layer">
             <div class="temp-block">
-                <div class="temp-val"><span id="cpu-temp">0</span>°</div>
+                <div class="temp-val"><span id="cpu-temp">0</span><span>°</span></div>
                 <span class="temp-label">CPU</span>
             </div>
             <div class="temp-block">
-                <div class="temp-val"><span id="gpu-temp">0</span>°</div>
+                <div class="temp-val"><span id="gpu-temp">0</span><span>°</span></div>
                 <span class="temp-label">GPU</span>
             </div>
         </div>
