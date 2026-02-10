@@ -11,7 +11,7 @@
 1. Установите exe file
 
 
-##  Технологии
+##  Технологии 
 * Python (WinRT API для захвата медиа)
 * WebSockets (Real-time передача данных)
 * Vanilla JS / CSS3 (Анимации и Canvas)
