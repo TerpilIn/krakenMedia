@@ -4,22 +4,8 @@
     --gpu-color: #9b59ff;
     --accent-color: #ffffff;
 }
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 480px;
-    height: 480px;
-    overflow: hidden; /* Чтобы не было полос прокрутки */
-    background: black; /* Чтобы не слепило белым при загрузке */
-}
 
-.screen {
-    width: 480px;
-    height: 480px;
-    position: relative;
-}
-
-body { 
+body, html { 
     background: #000000; 
     margin: 0; 
     padding: 0;
@@ -39,6 +25,8 @@ body {
     background-color: #ffffff; 
     overflow: hidden;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Принудительно делаем экран круглым визуально */
+    border-radius: 50%;
 }
 
 /* --- ТЕМЫ --- */
@@ -55,7 +43,8 @@ body {
     background-color: #111;
 }
 .screen.theme-minimal .overlay { display: none; }
-.screen.theme-minimal .brand { letter-spacing: 10px; font-weight: 200; }
+.screen.theme-minimal .brand { letter-spacing: 10px; font-weight: 200; color: #fff; }
+.screen.theme-minimal .temp-block { color: #fff; }
 
 /* --- РЕЖИМЫ (DARK/MUSIC) --- */
 
@@ -76,7 +65,7 @@ body {
     width: 100%; height: 100%;
     background-size: cover;
     background-position: center;
-    filter: blur(8px) brightness(0.6); /* Чуть больше блюра для читаемости */
+    filter: blur(15px) brightness(0.4); /* Усилил блюр для стиля */
     opacity: 0; 
     transition: opacity 1s ease-in-out;
     z-index: 0;
@@ -103,13 +92,13 @@ body {
 
 @keyframes marquee {
     0% { transform: translateX(0); }
-    20% { transform: translateX(0); } 
-    80% { transform: translateX(-100%); } 
+    10% { transform: translateX(0); } /* Задержка в начале */
+    90% { transform: translateX(-100%); } 
     100% { transform: translateX(0); } 
 }
 
 .animate-marquee {
-    animation: marquee 8s linear infinite;
+    animation: marquee 10s linear infinite;
     padding-right: 50px; 
 }
 
@@ -120,11 +109,12 @@ body {
     background: rgba(255, 255, 255, 0.82); 
     z-index: 1;
     transition: background 0.4s ease;
+    border-radius: 50%;
 }
 
 .brand {
     position: absolute;
-    top: 110px; 
+    top: 100px; /* Немного поднял для баланса */
     width: 100%;
     text-align: center;
     font-size: 20px;
@@ -143,7 +133,7 @@ canvas {
 
 .data-layer {
     position: absolute; 
-    top: -10px; left: 0; 
+    top: 0; left: 0; 
     width: 100%; height: 100%;
     display: flex; 
     justify-content: center; 
@@ -188,14 +178,15 @@ canvas {
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    background: rgba(10, 10, 10, 0.92); 
-    backdrop-filter: blur(10px); /* Эффект стекла */
+    background: rgba(10, 10, 10, 0.85); 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 100px; 
-    padding: 6px 20px 6px 6px; 
+    padding: 8px 20px 8px 8px; 
     min-width: 140px; 
-    max-width: 240px; 
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    max-width: 260px; 
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     z-index: 100;
     opacity: 0;
     visibility: hidden;
@@ -213,13 +204,13 @@ canvas {
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
     display: flex; align-items: center; justify-content: center;
 }
 
 .cover-art {
     width: 100%; height: 100%;
-    background-size: 65%; 
+    background-size: cover; /* Для музыки лучше cover */
     background-position: center;
     background-repeat: no-repeat;
 }
@@ -239,4 +230,3 @@ canvas {
     text-transform: uppercase;
     letter-spacing: 1px;
 }
-
