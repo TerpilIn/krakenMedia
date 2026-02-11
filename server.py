@@ -23,7 +23,7 @@ APP_NAME = "KrakenIntegra"
 APPDATA_PATH = os.path.join(os.environ['APPDATA'], APP_NAME)
 EXE_NAME = "KrakenControl.exe"
 FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
-CONFIG_URL = "https://terpilin.github.io/krakenMedia/config.html"
+CONFIG_URL = "https://terpilin.github.io/krakenMedia/src/config.html"
 
 # --- СОСТОЯНИЕ ---
 last_track_id = ""
@@ -165,3 +165,4 @@ if __name__ == "__main__":
         # Бесконечный цикл для сервиса
         while True:
             time.sleep(10)
+
