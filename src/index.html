@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NZXT Integra Kraken</title>
+    <link rel="stylesheet" href="src/style.css">
+</head>
+
+<body>
+    <div id="main-screen" class="screen">
+        <div id="bg-cover-full" class="full-bg"></div>
+        <div class="overlay"></div>
+
+        <div id="brand-label" class="brand">NZXT</div>
+
+        <canvas id="ring-canvas" width="480" height="480"></canvas>
+
+        <div class="data-layer">
+            <div class="temp-block">
+                <div class="temp-val"><span id="cpu-temp">0</span><span>°</span></div>
+                <span class="temp-label">CPU</span>
+            </div>
+            <div class="temp-block">
+                <div class="temp-val"><span id="gpu-temp">0</span><span>°</span></div>
+                <span class="temp-label">GPU</span>
+            </div>
+        </div>
+
+        <div id="music-pill" class="music-pill">
+            <div class="cover-wrapper">
+                <div id="pill-cover" class="cover-art"></div>
+            </div>
+            <div class="music-info">
+                <div class="track-container">
+                    <div id="track-name" class="track-name">Ожидание...</div>
+                </div>
+                <div class="artist-container">
+                    <div id="artist-name" class="artist-name">СИСТЕМА</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="src/script.js"></script>
+</body>
+
+</html>
