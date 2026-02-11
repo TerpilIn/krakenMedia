@@ -1,4 +1,4 @@
-/* Базовые переменные остаются прежними */
+/* --- ПЕРЕМЕННЫЕ И БАЗА --- */
 :root {
     --cpu-color: #50b4ff;
     --gpu-color: #9b59ff;
@@ -37,49 +37,24 @@ body, html {
 .screen.theme-minimal .brand { color: #fff; letter-spacing: 5px; }
 .screen.theme-minimal .temp-block { color: #fff; }
 
-/* --- РЕЖИМЫ --- */
 .screen.dark-mode { background-color: #000000; }
 .screen.dark-mode .brand, 
 .screen.dark-mode .temp-block { color: var(--accent-color); }
-.screen.dark-mode .overlay { background: rgba(0, 0, 0, 0.5); }
 
+/* --- ФОНОВАЯ ОБЛОЖКА --- */
 #bg-cover-full {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
     background-size: cover;
-    filter: blur(3px) brightness(0.4);
+    background-position: center;
+    filter: blur(8px) brightness(0.4);
     opacity: 0; 
     transition: opacity 1s ease-in-out;
     z-index: 0;
     border-radius: 50%; 
 }
 #bg-cover-full.active { opacity: 1; }
-
-.track-container {
-    width: 100%;
-    overflow: hidden; 
-    white-space: nowrap;
-    position: relative;
-}
-
-.track-name {
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-@keyframes marquee {
-    0% { transform: translateX(0); }
-    20% { transform: translateX(0); } 
-    80% { transform: translateX(-100%); } 
-    100% { transform: translateX(0); } 
-}
-
-.animate-marquee {
-    animation: marquee 8s linear infinite;
-    padding-right: 50px; 
-}
 
 .overlay {
     position: absolute;
@@ -90,11 +65,12 @@ body, html {
     border-radius: 50%;
     transition: background 0.4s ease;
 }
+.screen.dark-mode .overlay { background: rgba(0, 0, 0, 0.6); }
 
-
+/* --- ТЕКСТОВЫЕ БЛОКИ --- */
 .brand {
     position: absolute;
-    top: 65px; /* Опустили для 320px */
+    top: 65px;
     width: 100%;
     text-align: center;
     font-size: 15px;
@@ -111,6 +87,7 @@ canvas {
     z-index: 5; 
 }
 
+/* --- ТЕМПЕРАТУРЫ --- */
 .data-layer {
     position: absolute; 
     top: 0; left: 0; 
@@ -118,7 +95,7 @@ canvas {
     display: flex; 
     justify-content: center; 
     align-items: center;
-    gap: 25px; /* Уменьшили зазор */
+    gap: 25px;
     z-index: 6;
 }
 
@@ -130,8 +107,14 @@ canvas {
     transition: color 0.4s ease;
 }
 
+#cpu-temp, #gpu-temp {
+    transition: all 0.3s ease-out;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+}
+
 .temp-val { 
-    font-size: 58px; /* Уменьшили с 82 */
+    font-size: 58px; 
     font-weight: 700; 
     line-height: 1; 
     display: flex;
@@ -145,13 +128,12 @@ canvas {
 
 .temp-label { 
     font-size: 14px; 
-    color: inherit;
     font-weight: 800; 
     text-transform: uppercase; 
     margin-top: 2px;
 }
 
-/* Плеер адаптирован под узкий экран */
+/* --- МУЗЫКАЛЬНЫЙ ПЛЕЕР (PILL) --- */
 .music-pill {
     position: absolute;
     bottom: 30px;
@@ -162,11 +144,10 @@ canvas {
     background: rgba(10, 10, 10, 0.85); 
     backdrop-filter: blur(10px);
     border-radius: 50px; 
-    padding: 5px 15px 5px 5px; 
-    min-width: 130px; 
-    max-width: 150px; 
+    padding: 6px 15px 6px 6px; 
+    width: 140px; 
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     z-index: 100;
     opacity: 0;
     visibility: hidden;
@@ -176,15 +157,15 @@ canvas {
 .music-pill.active {
     opacity: 1;
     visibility: visible;
-    bottom: 70px; 
+    bottom: 65px; 
 }
 
 .cover-wrapper {
-    width: 32px; height: 32px; /* Компактнее */
+    width: 32px; height: 32px;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
-     background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
     display: flex; align-items: center; justify-content: center;
 }
 
@@ -199,31 +180,41 @@ canvas {
     margin-left: 10px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     overflow: hidden;
+    width: 100%;
 }
-.artist-container {
-    width: 150%;
+
+.track-container, .artist-container {
+    width: 100%;
     overflow: hidden; 
     white-space: nowrap;
-    position: relative;
 }
+
+.track-name {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
 .artist-name {
     color: #aaa;
     font-size: 8px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
+    display: inline-block;
 }
 
+/* --- АНИМАЦИЯ БЕГУЩЕЙ СТРОКИ --- */
 @keyframes marquee {
     0% { transform: translateX(0); }
-    20% { transform: translateX(0); } 
-    80% { transform: translateX(-100%); } 
+    15% { transform: translateX(0); } 
+    85% { transform: translateX(-100%); } 
     100% { transform: translateX(0); } 
 }
 
 .animate-marquee {
-    animation: marquee 8s linear infinite;
-    padding-right: 50px; 
+    animation: marquee 10s linear infinite;
+    padding-right: 40px; 
 }

@@ -1,4 +1,4 @@
-// Настройки подключения
+// 1. НАСТРОЙКИ И КОНСТАНТЫ
 const WS_URL = 'ws://127.0.0.1:8765';
 let socket;
 let reconnectTimer;
@@ -6,14 +6,13 @@ let reconnectTimer;
 const canvas = document.getElementById('ring-canvas');
 const ctx = canvas.getContext('2d');
 
-// Глобальный объект темы
 let themeConfig = {
     name: 'default',
     cpuColor: '#50b4ff',
     gpuColor: '#9b59ff'
 };
 
-// Функция инициализации сокета с авто-реконнектом
+// 2. ИНИЦИАЛИЗАЦИЯ СОКЕТА (Для музыки и тем)
 function connect() {
     if (socket) {
         socket.onopen = null;
@@ -25,10 +24,7 @@ function connect() {
 
     socket = new WebSocket(WS_URL);
 
-    socket.onopen = () => {
-        console.log(">>> КРАКЕН ПОДКЛЮЧЕН К СЕРВЕРУ");
-        clearTimeout(reconnectTimer);
-    };
+    socket.onopen = () => console.log(">>> КРАКЕН ПОДКЛЮЧЕН К СЕРВЕРУ");
 
     socket.onmessage = (event) => {
         try {
@@ -40,21 +36,17 @@ function connect() {
     };
 
     socket.onclose = () => {
-        console.log(">>> Связь потеряна. Реконнект через 2с...");
-        clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connect, 2000);
     };
 
-    socket.onerror = () => {
-        socket.close();
-    };
+    socket.onerror = () => socket.close();
 }
 
-// Рендеринг графики (Адаптировано под 320x320)
+// 3. ФУНКЦИЯ РИСОВАНИЯ (Кольца)
 function draw(cpu, gpu) {
-    const x = 160, y = 160; // Центр экрана 320/2
-    const radius = 138;     // Подобрано под отступы 320px
-    const width = 35;       // Линии стали чуть тоньше для изящности
+    const x = 160, y = 160; 
+    const radius = 138;     
+    const width = 35;       
     
     ctx.clearRect(0, 0, 320, 320);
 
@@ -68,8 +60,7 @@ function draw(cpu, gpu) {
     ctx.lineWidth = width;
     ctx.stroke();
 
-    // CPU Дуга (Слева)
-    // Угол распространения 0.35 * PI (~63 градуса в каждую сторону от центра)
+    // CPU Дуга
     const cpuSpread = (Math.min(cpu, 100) / 100) * (0.35 * Math.PI);
     ctx.beginPath();
     ctx.arc(x, y, radius, Math.PI - cpuSpread, Math.PI + cpuSpread);
@@ -78,7 +69,7 @@ function draw(cpu, gpu) {
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // GPU Дуга (Справа)
+    // GPU Дуга
     const gpuSpread = (Math.min(gpu, 100) / 100) * (0.35 * Math.PI);
     ctx.beginPath();
     ctx.arc(x, y, radius, 0 - gpuSpread, 0 + gpuSpread);
@@ -88,15 +79,10 @@ function draw(cpu, gpu) {
     ctx.stroke();
 }
 
-// Смена тем (CSS + Цвета Canvas)
+// 4. ТЕМЫ
 function applyTheme(themeName) {
     const screen = document.querySelector('.screen');
-    
-    const classes = Array.from(screen.classList);
-    classes.forEach(cls => {
-        if (cls.startsWith('theme-')) screen.classList.remove(cls);
-    });
-    
+    screen.className = 'screen'; // Сброс всех классов
     screen.classList.add(`theme-${themeName}`);
     themeConfig.name = themeName;
 
@@ -111,7 +97,7 @@ function applyTheme(themeName) {
     themeConfig.gpuColor = selected.gpu;
 }
 
-// Основная логика обработки данных
+// 5. ОБРАБОТКА ДАННЫХ СЕРВЕРА (Музыка)
 function handleServerData(data) {
     const screen = document.querySelector('.screen');
     const bgFull = document.getElementById('bg-cover-full');
@@ -126,63 +112,55 @@ function handleServerData(data) {
         applyTheme(data.theme);
     }
 
-    const cpu = data.cpu_temp || 0;
-    const gpu = data.gpu_temp || 0;
-    document.getElementById('cpu-temp').innerText = cpu;
-    document.getElementById('gpu-temp').innerText = gpu;
-    draw(cpu, gpu);
- // Логика музыкального плеера
-   if (data.music && data.music.title) {
-            screen.classList.add('dark-mode');
-            pill.classList.add('active');
+    if (data.music && data.music.title) {
+        screen.classList.add('dark-mode');
+        pill.classList.add('active');
+        
+        const currentService = data.music.service || 'other';
+        pillCover.style.backgroundImage = `url('assets/${currentService}.png')`;
+
+        if (trackElem.innerText !== data.music.title) {
+            trackElem.innerText = data.music.title;
+            artistElem.innerText = (data.music.artist || 'СИСТЕМА').toUpperCase();
             
-            const currentService = data.music.service || 'other';
-            const serviceUrl = `url('assets/${currentService}.png')`;
-            
-            if (pillCover.style.backgroundImage !== serviceUrl) {
-                pillCover.style.backgroundImage = serviceUrl;
-                pillCover.style.backgroundSize = "65%";
-                pillCover.style.backgroundRepeat = "no-repeat";
-                pillCover.style.backgroundPosition = "center";
-            }
-
-            if (trackElem.innerText !== data.music.title) {
-                trackElem.innerText = data.music.title;
-                artistElem.innerText = (data.music.artist || 'СИСТЕМА').toUpperCase();
-                
-                trackElem.classList.remove('animate-marquee');
+            // Сброс и запуск бегущей строки
+            [trackElem, artistElem].forEach(el => {
+                el.classList.remove('animate-marquee');
                 setTimeout(() => {
-                    if (trackElem.scrollWidth > trackContainer.offsetWidth) {
-                        trackElem.classList.add('animate-marquee');
+                    if (el.scrollWidth > el.parentElement.offsetWidth) {
+                        el.classList.add('animate-marquee');
                     }
-                }, 50);
-                   artistElem.classList.remove('animate-marquee');
-                setTimeout(() => {
-                    if (artistElem.scrollWidth > artistContainer.offsetWidth) {
-                        artistElem.classList.add('animate-marquee');
-                    }
-                }, 50);
-            }
-
-            if (data.music.cover) {
-                const coverData = `url('data:image/jpeg;base64,${data.music.cover}')`;
-                if (bgFull.style.backgroundImage !== coverData) {
-                    bgFull.style.backgroundImage = coverData;
-                    bgFull.classList.add('active');
-                }
-            } else {
-                bgFull.classList.remove('active');
-                bgFull.style.backgroundImage = "none";
-            }
-
-        } else {
-            screen.classList.remove('dark-mode');
-            pill.classList.remove('active');
-            bgFull.classList.remove('active');
-            bgFull.style.backgroundImage = "none";
-            trackElem.classList.remove('animate-marquee');
-            trackElem.innerText = "";
+                }, 100);
+            });
         }
+
+        if (data.music.cover) {
+            bgFull.style.backgroundImage = `url('data:image/jpeg;base64,${data.music.cover}')`;
+            bgFull.classList.add('active');
+        }
+    } else {
+        pill.classList.remove('active');
+        bgFull.classList.remove('active');
+    }
 }
 
+// 6. ОФИЦИАЛЬНАЯ ИНТЕГРАЦИЯ NZXT (Температуры)
+window.nzxt = {
+    v1: {
+        onMonitoringDataUpdate: (data) => {
+            if (!data.cpus || !data.gpus) return;
+
+            const cpuTemp = Math.round(data.cpus[0].temperature);
+            const gpuTemp = Math.round(data.gpus[0].temperature);
+
+            document.getElementById('cpu-temp').innerText = cpuTemp;
+            document.getElementById('gpu-temp').innerText = gpuTemp;
+
+            // Рисуем кольца данными от NZXT
+            draw(cpuTemp, gpuTemp);
+        }
+    }
+};
+
+// Запуск
 connect();
