@@ -1,7 +1,6 @@
 import asyncio
 import websockets
 import json
-import psutil 
 import winrt.windows.media.control as wmc
 import winrt.windows.storage.streams as streams
 import base64
@@ -10,11 +9,13 @@ import sys
 import shutil
 import webview
 import logging
+import winreg # Для работы с реестром
+import ctypes # Для уведомлений
 from aiohttp import web
 from threading import Thread
 import time
 
-# Отключаем лишний спам
+# Отключаем лишний спам aiohttp
 logging.getLogger('aiohttp.access').setLevel(logging.ERROR)
 
 # --- КОНФИГУРАЦИЯ ---
@@ -24,60 +25,62 @@ EXE_NAME = "KrakenControl.exe"
 FINAL_EXE_PATH = os.path.join(APPDATA_PATH, EXE_NAME)
 CONFIG_URL = "https://terpilin.github.io/krakenMedia/config.html"
 
-# --- СОСТОЯНИЕ (КАК БЫЛО) ---
+# --- СОСТОЯНИЕ ---
 last_track_id = ""
 last_cover_b64 = None
 current_service = "other"
 current_theme = "default"
 
-# --- ЛОГИКА ИНСТАЛЛЯЦИИ ---
-def install_and_setup():
+# --- ЛОГИКА ИНСТАЛЛЯЦИИ И УДАЛЕНИЯ ---
+def get_reg_key():
+    return r"Software\Microsoft\Windows\CurrentVersion\Uninstall\\" + APP_NAME
+
+def install():
+    """Копирует файл, прописывает в автозагрузку и добавляет в список программ Windows"""
     if not os.path.exists(APPDATA_PATH):
         os.makedirs(APPDATA_PATH)
-
-    current_exe = sys.executable
-    if "python.exe" not in current_exe.lower() and os.path.abspath(current_exe) != os.path.abspath(FINAL_EXE_PATH):
-        try:
-            shutil.copy2(current_exe, FINAL_EXE_PATH)
-            from win32com.client import Dispatch
-            shell = Dispatch('WScript.Shell')
-
-            startup = os.path.join(os.environ['APPDATA'], r'Microsoft\Windows\Start Menu\Programs\Startup')
-            s_link = shell.CreateShortCut(os.path.join(startup, f"{APP_NAME}_Service.lnk"))
-            s_link.Targetpath = FINAL_EXE_PATH
-            s_link.Arguments = "--service"
-            s_link.WindowStyle = 7 
-            s_link.save()
-
-            desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-            c_link = shell.CreateShortCut(os.path.join(desktop, "Kraken Control Center.lnk"))
-            c_link.Targetpath = FINAL_EXE_PATH
-            c_link.Arguments = "--config"
-            c_link.save()
-
-            os.startfile(FINAL_EXE_PATH, arguments="--service")
-            sys.exit()
-        except Exception:
-            pass
-
-# --- ТЕМПЕРАТУРЫ (ТОТ САМЫЙ МЕТОД) ---
-def get_hardware_stats():
-    cpu_val = 0
-    gpu_val = 0
-    try:
-        import wmi
-        w = wmi.WMI(namespace="root\\WMI")
-        # Получаем реальную температуру CPU
-        cpu_val = int((w.MSAcpi_ThermalZoneTemperature()[0].CurrentTemperature / 10.0) - 273.15)
-    except:
-        cpu_val = int(psutil.cpu_percent()) # Фоллбек на нагрузку
-
-    # Для видеокарты без OHM берем загрузку RAM как динамический показатель
-    gpu_val = int(psutil.virtual_memory().percent)
     
-    return cpu_val, gpu_val
+    # 1. Копируем себя в AppData, если запущены из другого места
+    if os.path.abspath(sys.executable) != os.path.abspath(FINAL_EXE_PATH):
+        try:
+            shutil.copy2(sys.executable, FINAL_EXE_PATH)
+        except: pass
 
-# --- МЕДИА (С СОХРАНЕНИЕМ СЕРВИСА) ---
+    # 2. Добавляем в реестр для "Установки и удаления программ"
+    try:
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, get_reg_key())
+        winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Kraken Media Control")
+        winreg.SetValueEx(key, "UninstallString", 0, winreg.REG_SZ, f'"{FINAL_EXE_PATH}" --uninstall')
+        winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, FINAL_EXE_PATH)
+        winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "PotatoPussy Dev")
+        winreg.CloseKey(key)
+    except: pass
+
+    # 3. Автозагрузка через реестр (надежнее ярлыков)
+    try:
+        run_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(run_key, APP_NAME, 0, winreg.REG_SZ, f'"{FINAL_EXE_PATH}" --service')
+        winreg.CloseKey(run_key)
+    except: pass
+
+def uninstall():
+    """Полная зачистка реестра"""
+    try:
+        # Удаляем из автозагрузки
+        run_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.DeleteValue(run_key, APP_NAME)
+        winreg.CloseKey(run_key)
+    except: pass
+
+    try:
+        # Удаляем из списка программ
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, get_reg_key())
+    except: pass
+
+    ctypes.windll.user32.MessageBoxW(0, "Приложение удалено из системы. Файлы в AppData можно удалить вручную.", "Kraken Uninstall", 0x40)
+    sys.exit()
+
+# --- МЕДИА ---
 async def _get_media_data():
     global last_track_id, last_cover_b64, current_service
     try:
@@ -91,9 +94,8 @@ async def _get_media_data():
         source_app = active_session.source_app_user_model_id.lower()
         props = await active_session.try_get_media_properties_async()
         
-        # Обновляем сервис только если нашли совпадение, иначе храним старый
         if "spotify" in source_app: current_service = "spotify"
-        elif any(x in source_app for x in ["yandex", "45347"]): current_service = "yandex"
+        elif any(x in source_app for x in ["yandex", "45347", "browser"]): current_service = "yandex"
         
         track_id = f"{props.title}_{props.artist}"
         if track_id != last_track_id:
@@ -112,14 +114,11 @@ async def _get_media_data():
     except:
         return None
 
-# --- СЕРВЕРНАЯ ЛОГИКА ---
+# --- СЕРВЕР ---
 async def ws_handler(websocket):
     while True:
         try:
-            c, g = get_hardware_stats()
             payload = {
-                "cpu_temp": c, 
-                "gpu_temp": g, 
                 "music": await _get_media_data(),
                 "theme": current_theme 
             }
@@ -135,7 +134,7 @@ async def change_theme(request):
 
 def start_servers():
     async def run_main():
-        async with websockets.serve(ws_handler, "127.0.0.1", 8765, ping_interval=20):
+        async with websockets.serve(ws_handler, "127.0.0.1", 8765):
             app = web.Application()
             app.add_routes([web.get('/set_theme/{name}', change_theme)])
             runner = web.AppRunner(app); await runner.setup()
@@ -146,16 +145,23 @@ def start_servers():
     asyncio.set_event_loop(loop)
     loop.run_until_complete(run_main())
 
+# --- ТОЧКА ВХОДА ---
 if __name__ == "__main__":
+    # Если запущен с флагом удаления
+    if "--uninstall" in sys.argv:
+        uninstall()
+
+    # Если скомпилирован в EXE
     if getattr(sys, 'frozen', False):
-        install_and_setup()
+        install()
 
     server_thread = Thread(target=start_servers, daemon=True)
     server_thread.start()
 
     if "--config" in sys.argv:
-        webview.create_window('Kraken Control Center', CONFIG_URL, width=940, height=620, resizable=False)
+        webview.create_window('Kraken Control Center', CONFIG_URL, width=940, height=620)
         webview.start()
     else:
+        # Бесконечный цикл для сервиса
         while True:
             time.sleep(10)
